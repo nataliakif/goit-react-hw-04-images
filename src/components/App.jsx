@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import Searchbar from './SearchBar/SearchBar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import API from '../services/api';
@@ -7,99 +7,93 @@ import styles from './ImageGallery/ImageGallery.module.css';
 import Button from './Button/Button';
 import Modal from './Modal/Modal';
 
-class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    status: 'idle',
-    id: null,
-    totalHits: null,
-    showModal: false,
-  };
-  componentDidMount() {
-    console.log('ok');
-  }
-  componentDidUpdate(prevProps, prevState) {
+export default function App() {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState('idle');
+  const [id, setId] = useState();
+  const [error, setError] = useState(null);
+  const [totalHits, setTotalHits] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (query === '') {
+      return;
+    }
     window.scrollBy({
       top: document.body.clientHeight,
       behavior: 'smooth',
     });
-    if (prevState.query !== this.state.query) {
-      this.setState({ status: 'loading', images: [], page: 1 }, this.getImages);
-    }
-    if (this.state.page !== prevState.page && this.state.page !== 1) {
-      this.setState({ status: 'loading' }, this.getImages);
-    }
-  }
-  getImages = () => {
-    API.fetchImages(this.state.query, this.state.page)
-      .then(response => {
-        if (response.totalHits === 0) {
-          return Promise.reject(
-            new Error(`Nothing was found by query ${this.state.query}`)
-          );
-        } else {
-          this.setState({
-            images: [...this.state.images, ...response.hits],
-            status: 'resolved',
-            totalHits: response.totalHits,
-            showModal: false,
-          });
-        }
-      })
-      .catch(error => this.setState({ error, status: 'rejected' }));
-  };
+    const getImages = () => {
+      if (page === 1) {
+        setImages([]);
+      }
+      API.fetchImages(query, page)
+        .then(response => {
+          if (response.totalHits === 0) {
+            return Promise.reject(
+              new Error(`Nothing was found by query ${query}`)
+            );
+          } else {
+            setImages(images => [...images, ...response.hits]);
+            setStatus('resolved');
+            setTotalHits(response.totalHits);
+            setShowModal(false);
+          }
+        })
+        .catch(error => {
+          setStatus('rejected');
+          setError(error);
+        });
+    };
+    getImages();
+  }, [query, page]);
 
-  handleLoadMore = () => {
-    const { page } = this.state;
-    this.setState({ page: page + 1 });
+  const handleLoadMore = () => {
+    setPage(page + 1);
   };
-  handleFormSubmit = query => {
-    this.setState({ query });
+  const handleFormSubmit = query => {
+    setQuery(query);
   };
-  onGalleryClick = id => {
-    this.setState({ id, showModal: true });
+  const onGalleryClick = id => {
+    setId(id);
+    setShowModal(true);
   };
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
+  const toggleModal = () => {
+    setShowModal(({ showModal }) => ({
       showModal: !showModal,
     }));
   };
-  modalData = () => {
-    const image = this.state.images.find(image => image.id === this.state.id);
+  const modalData = () => {
+    const image = images.find(image => image.id === this.state.id);
     return image;
   };
 
-  render() {
-    const { images, error, status, totalHits, showModal } = this.state;
-    return (
-      <>
-        <Searchbar onSubmit={this.handleFormSubmit} />;
-        {status === 'loading' && (
-          <div className={styles['Spinner']}>
-            <Circles color="#3f51b5" height={80} width={80} />
-          </div>
-        )}
-        {status === 'rejected' && (
-          <p className={styles['ImageGallery__rejected']}>{error.message}</p>
-        )}
-        {status === 'resolved' && totalHits > 12 && (
-          <>
-            <ImageGallery images={images} onClick={this.onGalleryClick} />
-            <Button onClick={this.handleLoadMore} />
-          </>
-        )}
-        {showModal && (
-          <Modal
-            onClose={this.toggleModal}
-            src={this.modalData().largeImageURL}
-            alt={this.modalData().tags}
-          />
-        )}
-      </>
-    );
-  }
+  return (
+    <>
+      <Searchbar onSubmit={handleFormSubmit} />;
+      {status === 'loading' && (
+        <div className={styles['Spinner']}>
+          <Circles color="#3f51b5" height={80} width={80} ariaLabel="loading" />
+        </div>
+      )}
+      {status === 'rejected' && (
+        <p className={styles['ImageGallery__rejected']}>{error.message}</p>
+      )}
+      {status === 'resolved' && totalHits > 12 && (
+        <>
+          <ImageGallery images={images} onClick={onGalleryClick} />
+          <Button onClick={handleLoadMore} />
+        </>
+      )}
+      {showModal && (
+        <Modal
+          onClose={toggleModal}
+          src={modalData().largeImageURL}
+          alt={modalData().tags}
+        />
+      )}
+    </>
+  );
 }
-
-export default App;
