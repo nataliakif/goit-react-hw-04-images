@@ -3,7 +3,6 @@ import styles from './ImageGallery.module.css';
 import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
 
 const ImageGallery = ({ images, onClick }) => {
-  console.log({ images });
   const itemClick = e => {
     if (e.target.nodeName !== 'IMG') {
       return;

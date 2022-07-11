@@ -21,26 +21,24 @@ export default function App() {
     if (query === '') {
       return;
     }
-    window.scrollBy({
-      top: document.body.clientHeight,
-      behavior: 'smooth',
-    });
+    setStatus('loading');
     const getImages = () => {
-      if (page === 1) {
-        setImages([]);
-      }
       API.fetchImages(query, page)
         .then(response => {
           if (response.totalHits === 0) {
             return Promise.reject(
               new Error(`Nothing was found by query ${query}`)
             );
+          }
+
+          if (page === 1) {
+            setImages(response.hits);
           } else {
             setImages(images => [...images, ...response.hits]);
-            setStatus('resolved');
-            setTotalHits(response.totalHits);
-            setShowModal(false);
           }
+          setStatus('resolved');
+          setTotalHits(response.totalHits);
+          setShowModal(false);
         })
         .catch(error => {
           setStatus('rejected');
@@ -55,18 +53,18 @@ export default function App() {
   };
   const handleFormSubmit = query => {
     setQuery(query);
+    setPage(1);
   };
   const onGalleryClick = id => {
+    console.log(id);
     setId(id);
     setShowModal(true);
   };
   const toggleModal = () => {
-    setShowModal(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+    setShowModal(!showModal);
   };
   const modalData = () => {
-    const image = images.find(image => image.id === this.state.id);
+    const image = images.find(image => image.id === id);
     return image;
   };
 
